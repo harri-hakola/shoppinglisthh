@@ -10,12 +10,10 @@ div {
     
 }
 
-table {
-    border-collapse: collapse;
-}
 
-table, td {
-    border: 1px solid black;
+table, th {
+    
+    text-align: center;
     height: 50px;
 }
 
@@ -41,7 +39,14 @@ button {
   }
 
   input[type=text] {
-    width: 10%;
+    width: 20%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    box-sizing: border-box;
+  }
+
+  input[type=number] {
+    width: 20%;
     padding: 12px 20px;
     margin: 8px 0;
     box-sizing: border-box;
@@ -61,5 +66,7 @@ button {
       display: inline-block;
       font-size: 16px;
   }
+
+
 
   

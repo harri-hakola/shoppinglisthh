@@ -60,12 +60,12 @@ const user_model = mongoose.model('user', user_schema);
 
 let app = express();
 
-//Body parser
+
 app.use(body_parser.urlencoded({
     extended: true
 }));
 
-//Session
+
 app.use(session({
     secret: '1234qwerty',
     resave: true,
@@ -86,7 +86,6 @@ const is_logged_handler = (req, res, next) => {
     }
     next();
 };
-
 
 app.use('/css', express.static('css'))
 
@@ -112,6 +111,7 @@ app.get('/', is_logged_handler, (req, res, next) => {
             console.log('user:', user);
             res.write(`
         <html>
+        <meta charset=utf-8>
         <link rel="stylesheet" type="text/css" href="./css/style.css">
         <body>
             <h4>Logged in as user: ${user.name}</h4>
@@ -123,7 +123,7 @@ app.get('/', is_logged_handler, (req, res, next) => {
                 res.write(`<a href="/shopping_list/${shopping_list.id}">${shopping_list.name}</a></br></br>`);
                 res.write(`<form action="delete-shopping_list" method="POST">
                 <input type="hidden" name="shopping_list_id" value="${shopping_list._id}">
-                <button type="submit">Delete list</button>
+                <button type="submit" id="delete">Delete list</button>
             </form>`)
             });                                                                            
             res.write(`
@@ -157,19 +157,19 @@ app.post('/delete-shopping_list', (req, res, next) => {
     });
 });
 
-//Delete product from shopping-list
-app.post('/delete-product', (req, res, next) => {
-    const user = req.user;   
+//Delete product
+app.post('/delete-product', (req, res, next) => {   
     const shopping_list = req.shopping_list;
     const product_id_to_delete = req.body.product_id;
-    const shopping_list_id = req.body.shopping_list_id;
-    
+    const shopping_list_id = req.body.shopping_list_id;  
+   
         product_model.findByIdAndRemove(product_id_to_delete).then(() => {
-            console.log(shopping_list_id);
             res.redirect(`/shopping_list/${shopping_list_id}`)           
-        });
-    });
+        });   
+});
 
+
+//ShoppingList page
 app.get('/shopping_list/:id', is_logged_handler, (req, res, next) => {
      const id = req.params.id;
      shopping_list_model.findOne({
@@ -177,38 +177,55 @@ app.get('/shopping_list/:id', is_logged_handler, (req, res, next) => {
      }).then((shopping_list) => {
          shopping_list.populate('products')
          .execPopulate()
-         .then(() => {
-             console.log(shopping_list.products)
+         .then(() => {          
              res.write(`                                              
                     <html>
+                    <meta charset=utf-8>
                     <link rel="stylesheet" type="text/css" href="../css/style.css">
                         <body>
                         <h1>Shopping-list application</h1>
                         <h2><a href="/">Home</a></h2>
                         <br>
                         <h3>Shopping list name: ${shopping_list.name} </h3>`);
-            
-                shopping_list.products.forEach((product) => { 
-                console.log(product.name)
+                           
              res.write(`                      
                         <table>
                             <tr>
-                                <td><b>Product:</b>${product.name}</td>
-                                <td><b>Quantity:</b>${product.quantity}</td>
+                                <th>Product:</th>
+                                <th>Quantity:</th>
+                                <th>Image:</th>                                
+                            </tr>`)
+                            shopping_list.products.forEach((product) => {                                 
+                             res.write(`    
+                            <tr>
+                                <td>${product.name}</td>
+                                <td>
+
+                                <form action="/product-quantity" method="POST">
+                                <input type="number" name="quantity" value="${product.quantity}">
+                                <input type="hidden" name="product_id" value="${product._id}">
+                                <input type="hidden" name="shopping_list_id" value="${shopping_list._id}">                            
+                                <button type="submit">Update</button>                             
+                                </form>
+                                </td>
                                 <td><img src="${product.image_url}" alt="kuva"></td>
                                 <td>
+
                                 <form action="/delete-product" method="POST">
                                 <input type="hidden" name="product_id" value="${product._id}">
                                 <input type="hidden" name="shopping_list_id" value="${shopping_list._id}">
                                 <button type="submit" id="delete">Delete product</button></form>
                                 </td>
-                            </tr>
-                        </table>`);
-                    });                                         
-            res.write(`
+                            </tr> `)
+                        });
+                    
+                        res.write(`
+                        </table>
+                                                             
+            
                     <form action="/add-product" method="POST">
                 <div>Product name:<br><input type="text" name="name"></div>
-                <div>Quantity:<br><input type="number" name="quantity"></div>
+                <div>Quantity:<br><input type="number" name="quantity"</div>
                 <div>Image url:<br><input type="text" name="image_url" value="https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcR3CC6a9Je41GSKvu8C9L5xL3oS5EuPoCFTU6JU-FZHk6PoddIh"></div>
                  <button type="submit">Add product</button>
                  <input type="hidden" name="shopping_list_id" value="${shopping_list._id}">
@@ -237,6 +254,7 @@ app.post('/add-shopping-list', (req, res, next) => {
     });
 });
 
+//Add product to shopping-list
 app.post('/add-product', (req, res, next) => {    
     const user = req.user;
     const shopping_list_id = req.body.shopping_list_id;
@@ -260,6 +278,24 @@ app.post('/add-product', (req, res, next) => {
       })
  });
 
+
+ //Change product quantity
+  app.post('/product-quantity', (req, res, next) => {
+     const product_id = req.body.product_id;
+     const updated_quantity = req.body.quantity;
+     const shopping_list_id = req.body.shopping_list_id;
+
+     product_model.findOne({
+         _id: product_id
+     }).then((product) => {
+         product.quantity = updated_quantity;
+         product.save().then (() => {
+             return res.redirect(`/shopping_list/${shopping_list_id}`);
+         });        
+  });
+ });
+
+
 //Logout
 app.post('/logout', (req, res, next) => {
     req.session.destroy();
@@ -271,6 +307,7 @@ app.get('/login', (req, res, next) => {
     console.log('user: ', req.session.user)
     res.write(`
     <html>
+    <meta charset=utf-8>
     <link rel="stylesheet" type="text/css" href="./css/style.css">
     <body>
         <form action="/login" method="POST">
@@ -332,7 +369,7 @@ app.use((req, res, next) => {
     `);
 });
 
-//Shutdown server CTRL + C in terminal
+
 
 const mongoose_url = 'mongodb+srv://shoppinglistdb:F0vsPryLOTibdSlJ@cluster0-gdkar.mongodb.net/test?retryWrites=true&w=majority';
 mongoose.connect(mongoose_url, {
